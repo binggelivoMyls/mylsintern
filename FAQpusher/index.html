@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://nhn.github.io/tui.editor/latest/examples/css/tuidoc-example-style.css" />
+    <link rel="stylesheet" href="https://nhn.github.io/tui.editor/latest/dist/cdn/toastui-editor.css" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        * {
+            font-family: Helvetica, sans-serif;
+            color: #333;
+        }
+
+        #form,
+        #dataebene,
+        h1 {
+            width: 80vw;
+            margin-left: 10vw;
+        }
+
+        button {
+            padding: 20px;
+            border-radius: 200px;
+            border: none;
+            background-color: #f7f9fc;
+        }
+
+        button:hover {
+            background-color: #ebedf2;
+        }
+
+        input {
+            background-color: #f7f9fc;
+            width: calc(100% - 40px);
+            padding: 20px;
+            border: 1px solid #ebedf2;
+            border-radius: 3px;
+        }
+
+        input:focus-visible {
+            outline-width: 0;
+        }
+    </style>
+    <script>
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+    </script>
+</head>
+
+<body>
+    <h1>FAQ bearbeiten</h1>
+    <div id="form">
+        <p>Frage:</p>
+        <input type="text" id="inputquestion">
+        <p>Antwort:</p>
+        <div id="example"></div>
+        <script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+        <script src="https://nhn.github.io/tui.editor/latest/dist/cdn/toastui-editor-all.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/1.9.1/showdown.min.js"></script>
+        <script>
+            const editor = new toastui.Editor({
+                el: document.querySelector('#example'),
+                height: '200px',
+                width: '100%',
+                initialEditType: 'wysiwyg'
+            })
+
+            ifclick = true;
+            function sendfaq() {
+                if (ifclick) {
+                    var inputform;
+                    if (urlParams.get('api') == "5cdf77536bb02c147e14c6ddba687e0d") {
+                        $.post("https://mylsintern.mls-test.ch/FAQpusher/postdata.php?api=" + urlParams.get('api'), {
+                            question: $("#inputquestion").val(),
+                            answer: editor.getMarkdown(),
+                            c_buttonTitel: $("#inputc_buttonHref").val(),
+                            c_buttonHref: $("#inputc_buchungslink").val()
+                        },
+                            function (data, status) {
+                                const datajs = JSON.parse(/{"meta":{.*}/.exec(data)[0]);
+                                console.log(datajs);
+                                console.log(datajs.meta.errors.length);
+                                if (datajs.meta.errors.length > 0) {
+                                    $("#form").html("<p>Fehlerhaft abgesendet: " + datajs.meta.errors[0].message + "</p></br><br><button onclick =\"location.reload()\">Neuer Eintrag</button>");
+                                } else {
+                                    $("#form").html("<p>Erfolgreich abgesendet: " + status + "</p></br><br><button onclick=\"location.reload()\">Neuer Eintrag</button > ");
+                                }
+                            }
+                        );
+                    } else {
+                        $.post("https://mylsintern.mls-test.ch/FAQpusher/postdata.php?api=" + urlParams.get('api'), {
+                            question: $("#inputquestion").val(),
+                            answer: editor.getMarkdown()
+                        },
+                            function (data, status) {
+                                const datajs = JSON.parse(/{"meta":{.*}/.exec(data)[0]);
+                                console.log(datajs);
+                                console.log(datajs.meta.errors.length);
+                                if (datajs.meta.errors.length > 0) {
+                                    $("#form").html("<p>Fehlerhaft abgesendet: " + datajs.meta.errors[0].message + "</p></br><br><button onclick =\"location.reload()\">Neuer Eintrag</button>");
+                                } else {
+                                    $("#form").html("<p>Erfolgreich abgesendet: " + status + "</p></br><br><button onclick=\"location.reload()\">Neuer Eintrag</button > ");
+                                }
+                            }
+                        );
+                    }
+                    ifclick = false;
+                }
+            }
+        </script>
+        <div class="varinput">
+        </div>
+        <script>
+            if (urlParams.get('api') == "5cdf77536bb02c147e14c6ddba687e0d") {
+                $(".varinput").html('<p>Button Text:</p><input type="text" id="inputc_buttonHref"><p>Button Url:</p><input type="url" id="inputc_buchungslink">');
+            }
+        </script>
+        <br>
+        <button onclick="sendfaq()">Senden</button>
+    </div>
+    <div id="dataebene">
+        <h2>Bereits vorhandene FAQs</h2>
+        <table id="berdata"></table>
+        <button onclick="offsetnr = offsetnr - 50; loaddata(offsetnr);"><</button>
+                <button onclick="offsetnr = offsetnr + 50; loaddata(offsetnr);">></button>
+                <script>
+                    var mdconverter = new showdown.Converter();
+                    offsetnr = 0;
+                    function loaddata(offset) {
+                        if (0 > offset) {
+                            offsetnr = 0;
+                            offset = 0;
+                        }
+                        $.get("https://mylsintern.mls-test.ch/FAQpusher/getdata.php?api=" + urlParams.get('api') + "&offset=" + offset, function (data, status) {
+                            html = "<tr><th>Uid</th><th>Id</th><th>Question</th><th>Answer</th></tr>";
+                            data = JSON.parse(data);
+                            console.log(data);
+                            for (var i = 0; i < data.response.entities.length; i++) {
+                                datai = data.response.entities[i];
+                                html += "<tr><td>" + datai.meta.uid + "</td><td>" + datai.meta.id + "</td><td>" + datai.question + "</td><td>" + mdconverter.makeHtml(datai.answer) + "</td></tr>";
+                            }
+                            $("#berdata").html(html);
+                        });
+                    }
+
+                    loaddata(offsetnr);
+                </script>
+    </div>
+    <br><br>
+</body>
+
+
+</html>
